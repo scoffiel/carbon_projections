@@ -6,7 +6,7 @@ AGU Advances, 2021
 
 Corresponding author: Shane Coffield scoffiel@uci.edu 
 
-All data are available at zenodo
+All data are available at at Dryad https://doi.org/10.7280/D1568Z 
 
 Google Earth Engine scripts are available at
 
