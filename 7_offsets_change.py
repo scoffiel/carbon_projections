@@ -20,20 +20,16 @@ Outputs:
 import numpy as np
 import pandas as pd
 import xarray as xr
-import os
 import matplotlib.pyplot as plt
-import datetime as dt
-import time
-from scipy.spatial.distance import cdist
-from scipy.spatial.distance import euclidean
 import cartopy.crs as ccrs
 import cartopy
 from cartopy.io.shapereader import Reader
 from cartopy.feature import ShapelyFeature
 
 root = '/Users/scoffiel/california/'
+SCENARIO = 'rcp85'
 
-results = xr.open_dataset(root + 'model_output/1_RF_regression/rcp85_mean.nc4').carbon_change
+results = xr.open_dataset(root + 'model_output/1_RF_regression/{}_mean.nc4'.format(SCENARIO)).carbon_change
 table = results.to_dataframe('change').dropna().reset_index()
 
 #first panel: map of change plot with offsets overlaid
@@ -86,7 +82,7 @@ ax2 = fig.add_subplot(212)
 ax2.bar(bins[:-1], counts, width=10, alpha=0.5, label='All California forests')
 print('mean for California', np.mean(state))
 
-offsets = xr.open_rasterio(root + 'model_output/1_RF_regression/rcp85_mean_offsets.tif')[0,:,:]
+offsets = xr.open_rasterio(root + 'model_output/1_RF_regression/{}_mean_offsets.tif'.format(SCENARIO))[0,:,:]
 
 offsets = np.array(offsets).flatten()
 offsets = offsets[offsets>-9999]
