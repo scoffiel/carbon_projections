@@ -6,7 +6,7 @@ AGU Advances, 2021
 
 Corresponding author: Shane Coffield scoffiel@uci.edu 
 
-All data are available at at Dryad https://doi.org/10.7280/D1568Z 
+All data are available at at Dryad https://doi.org/10.7280/D1568Z (currently available to coauthors and reviewers at https://datadryad.org/stash/share/U2w7nj9JyAS9VFgSJpCHaNNxc-mvKw95Zx_b8w6RFOg )
 
 Google Earth Engine scripts are available at
 
@@ -24,7 +24,7 @@ https://github.com/scoffiel/carbon_projections
     <li>LEMMA species biomass https://lemma.forestry.oregonstate.edu/data
     <li>NLCD land coverhttps://www.mrlc.gov/data/nlcd-2016-land-cover-conus
     <li>ESA CCI biomass https://catalogue.ceda.ac.uk/uuid/bedc59f37c9545c981a839eb552e4084
-    <li>BCSD CMIP5 downscaled climate projectionsftp://gdo-dcp.ucllnl.org/pub/dcp/archive/cmip5/bcsd
+    <li>BCSD CMIP5 downscaled climate projections ftp://gdo-dcp.ucllnl.org/pub/dcp/archive/cmip5/bcsd
 </ul>
 
 <br><b>model_output</b>: corresponds to the four approaches discussed in the manuscript. For all approaches, we provide projections for 6 scenarios: RCP4.5 & RCP8.5 x dry/mean/wet
