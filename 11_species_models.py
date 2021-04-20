@@ -204,10 +204,10 @@ print('pine/oak/other', (table_future.total_c_pred_groups.sum() - table.total_c_
 
 
 '''
-#map predicted, observed, and error (spatial residuals for Fig S9) -------------------------------------------------
+#map predicted, observed, and error (spatial residuals for Fig S3) -------------------------------------------------
 fig = plt.figure(figsize=(12,34))
 ecoregions = ShapelyFeature(Reader(root + "epa_ecoregions3/level3_cali.shp").geometries(), ccrs.PlateCarree())
-vmaxs = {'DouglasFir':80,'PonderosaPine':30,'CanyonLiveOak':30,'Redwood':130,'conifer':120,'hardwood':80}
+vmaxs = {'DouglasFir':70,'PonderosaPine':30,'CanyonLiveOak':30,'Redwood':130,'conifer':120,'hardwood':70}
 letters = ['(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)','(o)','(p)','(q)','(r)','(s)','(t)','(u)','(v)','(w)','(x)',]
 count = 0
 for spp in ['DouglasFir','PonderosaPine','CanyonLiveOak','Redwood','conifer','hardwood']:
@@ -268,9 +268,9 @@ for spp in ['DouglasFir','PonderosaPine','CanyonLiveOak','Redwood','conifer','ha
     ax.set_yticklabels([32,34,36,38,40,42])
     ax.tick_params(top=True, right=True)
 
-plt.savefig(root + 'figures/figS9gx_species.eps')
+plt.savefig(root + 'figures/figS3gx_species.eps')
 '''
-
+stop
 
 #Make maps of change --------------------------------------------------------------
 #6 subplots for 4 species and 2 types
@@ -284,7 +284,6 @@ letters = ['(a)','(b)','(c)','(d)','(e)','(f)',]
 vmaxs = [35,15,15,70,60,40]
 
 fig = plt.figure(figsize=(14,20))
-
 for i in range(6):
     ax = fig.add_subplot(3,2,i+1, projection=ccrs.Miller())
     ax.set_extent([235.5,246,33,45], crs=ccrs.Miller())
@@ -292,15 +291,15 @@ for i in range(6):
     ax.add_feature(ecoregions, edgecolor='0.2', facecolor='none', linewidth=0.2)
     plot = ax.scatter(table.longitude, table.latitude, c=table_future[names[i]+'_density_pred']-table[names[i]+'_density_pred'], vmin=-vmaxs[i], vmax=vmaxs[i], s=14, transform=ccrs.PlateCarree(), cmap='PRGn', marker='s')
     cbar = plt.colorbar(plot, orientation='vertical', shrink=0.8, pad=0.01, extend='both')
-    cbar.ax.tick_params(labelsize=13)
-    cbar.set_label('ton C/ha', size=13)
-    ax.set_title(titles[i] + ' Change', fontsize=15)
+    cbar.ax.tick_params(labelsize=15)
+    cbar.set_label('ton C/ha', size=15)
+    ax.set_title(titles[i] + ' Change', fontsize=18)
     present = (table[names[i]+'_density_pred'] * table.valid).sum()
     future = (table_future[names[i]+'_density_pred'] * table.valid).sum()
     change = (future - present) / present * 100
-    ax.text(0.55,0.8,'{:.1f}%'.format(change), fontsize=15, fontweight='bold', transform=ax.transAxes)
+    ax.text(0.55,0.81,'{:.1f}%'.format(change), fontsize=18, fontweight='bold', transform=ax.transAxes)
     ax.text(-124.2,33.5,letters[i],fontsize=18, fontweight='bold')
-    ax.text(0.55,0.7,'total AGL\ncarbon change', fontsize=13, transform=ax.transAxes)
+    ax.text(0.55,0.7,'total AGL\ncarbon change', fontsize=15, transform=ax.transAxes)
     ax.set_xticks([-124, -122, -120, -118, -116, -114], crs=ccrs.PlateCarree())
     ax.set_yticks([32,34,36,38,40,42], crs=ccrs.PlateCarree())
     ax.set_xticklabels([-124,-122,-120,-118,-116,''])

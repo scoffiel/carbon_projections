@@ -6,7 +6,7 @@ scoffiel@uci.edu
 
 Purpose: Duplicate of script 1 to process raw BCSD climate data, but modified
 slightly to maintain all 10 years of data in the present. This is needed for 
-calculating the interannual variability in the climate analogues approach. 
+calculating the interannual variability in the climate analogs approach. 
 
 Inputs:
     BCSD downscaled CMIP5 monthly CONUS climate data from https://gdo-dcp.ucllnl.org/downscaled_cmip_projections/dcpInterface.html

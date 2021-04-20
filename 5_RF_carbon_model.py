@@ -33,10 +33,10 @@ from scipy import stats
 from cartopy.io.shapereader import Reader
 from cartopy.feature import ShapelyFeature
 
-SCENARIO = 'rcp45'
+SCENARIO = 'rcp85'
 MODEL = 'wet' #_wet, _dry, mean
-title = 'RCP8.5 Mean'
-letter = '(c)'
+title = 'RCP8.5 Wet'
+letter = '(f)'
 
 root = '/Users/scoffiel/california/'
 
@@ -74,11 +74,11 @@ states = cartopy.feature.NaturalEarthFeature(category='cultural',name='admin_1_s
 ecoregions = ShapelyFeature(Reader(root + "epa_ecoregions3/level3_cali.shp").geometries(), ccrs.PlateCarree())
 ax.add_feature(ecoregions, edgecolor='0.3', facecolor='none', linewidth=0.2)
 ax.add_feature(states, edgecolor='0.2')
-ax.set_title('Present-day AGL carbon density', fontsize=15)
+ax.set_title('Present-day AGL carbon density', fontsize=18)
 ax.text(-124.2,33.5,'(a)',fontsize=18, fontweight='bold')
 cbar = plt.colorbar(plot, orientation='vertical', shrink=0.8, pad=0.01)
-cbar.set_label('ton C/ha', size=13)
-cbar.ax.tick_params(labelsize=13)
+cbar.set_label('ton C/ha', size=15)
+cbar.ax.tick_params(labelsize=15)
 
 ax.set_xticks([236,238,240,242,244,246], crs=ccrs.PlateCarree())
 ax.set_yticks([32,34,36,38,40,42], crs=ccrs.PlateCarree())
@@ -86,7 +86,7 @@ ax.set_xticklabels([-124,-122,-120,-118,-116,''])
 ax.set_yticklabels([32,34,36,38,40,42])
 ax.tick_params(top=True, right=True)
 
-#plt.savefig(root + 'figures/fig1a_carbonmap.eps')
+#plt.savefig(root + 'figures/fig2a_carbonmap.eps')
 #plt.savefig(root + 'figures/figS10a_carbonunfiltered.eps')
 
 
@@ -221,10 +221,10 @@ ax2.plot([0, 200], [inter, slope*200+inter], c='black') #fixed
 ax2.text(75, 160, 'R$^2$ = {:.3f}'.format(r**2))
 ax2.set_title('Model Performance')
 ax2.text(0.85, 0.05, '(b)',fontsize=12, fontweight='bold', transform=ax2.transAxes)
-#plt.savefig(root + 'figures/figS3ab_performance.eps')
+#plt.savefig(root + 'figures/figS4ab_performance.eps')
 
 
-#map predicted, observed, error for the present (fig S9abc) ----------------------------------------------------
+#map predicted, observed, error for the present (fig S3abc) ----------------------------------------------------
 '''
 fig = plt.figure(figsize=(12,6))
 
@@ -268,7 +268,7 @@ plot = ax.scatter(table.longitude, table.latitude, c=table['carb_pred']-table.ca
 ax.add_feature(states, edgecolor='0.2')
 ax.text(-119, 43, 'Underpredict', fontsize=10, color='violet')
 ax.text(-119, 42, 'Overpredict', fontsize=10, color='green')
-ax.set_title('RF regression error', fontsize=15)
+ax.set_title('RF error (pred.-obs.)', fontsize=15)
 ax.add_feature(ecoregions, edgecolor='0.3', facecolor='none', linewidth=0.2)
 ax.add_feature(states, edgecolor='0.2')
 ax.text(-124.2,33.5,'(c)',fontsize=16, fontweight='bold')
@@ -319,10 +319,10 @@ for i in table.index:
     
 export.attrs["units"] = "tons-per-ha"
 export = export.rename('carbon_change')
-export.to_dataset(name='carbon_change').to_netcdf(root + 'model_output/1_RF_regression/{}_{}.nc4'.format(SCENARIO,MODEL))
+#export.to_dataset(name='carbon_change').to_netcdf(root + 'model_output/1_RF_regression/{}_{}.nc4'.format(SCENARIO,MODEL))
 
 
-#carbon change plot (Fig 2 and S4) -------------------------------------------
+#carbon change plot (Fig 2 and S5) -------------------------------------------
 change = ((table_future['carb_pred']*table.valid).sum() - (table['carb_pred']*table.valid).sum())/ (table['carb_pred']*table.valid).sum()*100
 
 fig = plt.figure(figsize=(7,7))
@@ -331,13 +331,13 @@ ax.set_extent([235.5,246,33,45], crs=ccrs.Miller())
 ax.add_feature(ecoregions, edgecolor='0.3', facecolor='none', linewidth=0.2)
 ax.add_feature(states, edgecolor='0.2')
 plot = ax.scatter(table.longitude, table.latitude, c=table_future['carb_pred']-table['carb_pred'], s=20, vmin=-75, vmax=75, marker='s', cmap='PRGn', transform=ccrs.PlateCarree()) #change scale as needed
-cbar = plt.colorbar(plot, orientation='horizontal', shrink=0.65, pad=0.06, extend='both') #.65 and .06 for horizontal; 0.8 and .01 for vert 
-cbar.ax.tick_params(labelsize=13)
-cbar.set_label('ton C/ha', size=13)
-ax.text(0.55,0.8,'{:.1f}%'.format(change), fontsize=15, fontweight='bold', transform=ax.transAxes)
-ax.text(0.55,0.7,'total AGL\ncarbon change', fontsize=13, transform=ax.transAxes)
+cbar = plt.colorbar(plot, orientation='horizontal', shrink=0.65, pad=0.05, extend='both') #.65 and .05 for horizontal; 0.8 and .01 for vert 
+cbar.ax.tick_params(labelsize=14)
+cbar.set_label('ton C/ha', size=16)
+ax.text(0.51,0.82,'{:.1f}%'.format(change), fontsize=18, fontweight='bold', transform=ax.transAxes)
+ax.text(0.51,0.7,'total AGL\ncarbon change', fontsize=16, transform=ax.transAxes)
 ax.text(-124.2,33.5,letter,fontsize=18, fontweight='bold')
-ax.set_title(title + ' Change', fontsize=15)
+ax.set_title(title + ' Change', fontsize=18)
 
 ax.set_xticks([236,238,240,242,244,246], crs=ccrs.PlateCarree())
 ax.set_yticks([32,34,36,38,40,42], crs=ccrs.PlateCarree())
@@ -345,7 +345,8 @@ ax.set_xticklabels([-124,-122,-120,-118,-116,''])
 ax.set_yticklabels([32,34,36,38,40,42])
 ax.tick_params(top=True, right=True)
 
-#plt.savefig(root + 'figures/figS4f_85wet.eps')
+plt.savefig(root + 'figures/figS5f_85wet.eps')
+#plt.savefig(root + 'figures/fig2c_85change.eps')
 
 total_area = 5600*2258 #hectares per pixel times number of pixels
 

@@ -33,7 +33,7 @@ from scipy import stats
 from cartopy.io.shapereader import Reader
 from cartopy.feature import ShapelyFeature
 
-SCENARIO = 'rcp45'
+SCENARIO = 'rcp85'
 MODEL = 'mean' #wet, dry, mean
 
 root = '/Users/scoffiel/california/'
@@ -189,8 +189,8 @@ for i in table_future.index:
 change = ( (table.veg_pred==2).sum() - (table_future.veg_pred==2).sum() ) / (table.veg_pred==2).sum() *100 #change in forest cover area
 change2 = ((table_future.carb * table_future.valid).sum() - (table.carb * table.valid).sum()) / (table.carb*table.valid).sum() * 100 #change in calculated total carbon density
 
-
-#map predicted vs observed CLASSIFICATION ----------------------------------------------------
+'''
+#map predicted vs observed (spatial residuals) ----------------------------------------------------
 fig = plt.figure(figsize=(12,6))
 
 import matplotlib as mpl
@@ -246,7 +246,7 @@ ax = fig.add_subplot(133, projection=ccrs.Miller())
 ax.set_extent([235.5,246,33,45], crs=ccrs.Miller())
 plot = ax.scatter(table.longitude, table.latitude, c=table.veg_pred-table.veg, s=4, transform=ccrs.PlateCarree(), cmap=cmap, norm=norm, marker='s')
 ax.add_feature(states, edgecolor='0.2')
-ax.set_title('RF classification error', fontsize=15)
+ax.set_title('RF error (pred.-obs.)', fontsize=15)
 ax.add_feature(ecoregions, edgecolor='0.3', facecolor='none', linewidth=0.2)
 ax.add_feature(states, edgecolor='0.2')
 ax.text(-124.2,33.5,'(f)',fontsize=16, fontweight='bold')
@@ -258,8 +258,8 @@ ax.set_xticklabels([-124,-122,-120,-118,-116,''])
 ax.set_yticklabels([32,34,36,38,40,42])
 ax.tick_params(top=True, right=True)
 
-#plt.savefig(root + 'figures/figS9def_classif.eps')
-
+#plt.savefig(root + 'figures/figS3def_classif.eps')
+'''
 #save change as netcdf  -------------------------------------------------------
 #use climate dataset as a template
 export = present_climate.sel(latitude=slice(32.5, 42.3), longitude=slice(235.1,246.3), variables='p_fall')
@@ -271,7 +271,7 @@ for i in table.index:
     
 export.attrs["units"] = "0nochange_-1forestloss_1forestgain"
 export = export.rename('veg_change')
-export.to_dataset(name='veg_change').to_netcdf(root + 'model_output/2_RF_veg_class/{}_{}.nc4'.format(SCENARIO,MODEL))
+#export.to_dataset(name='veg_change').to_netcdf(root + 'model_output/2_RF_veg_class/{}_{}.nc4'.format(SCENARIO,MODEL))
 
 #Make map of dom veg type change --------------------------------------------------------------
 fig7 = plt.figure(figsize=(8,8))
@@ -280,18 +280,18 @@ ax.set_extent([235.5,246,33,45], crs=ccrs.Miller())
 plot = ax.scatter(table.longitude, table.latitude, c=table_future.veg_pred-table.veg_pred, s=12, transform=ccrs.PlateCarree(), cmap=cmap, norm=norm, marker='s')
 ax.add_feature(states, edgecolor='0.2')
 ax.add_feature(ecoregions, edgecolor='0.3', facecolor='none', linewidth=0.2)
-ax.text(0.55,0.9,'{:.1f}%'.format(change), fontsize=15, transform=ax.transAxes)
-ax.text(0.55,0.86,'loss of forest area', transform=ax.transAxes, fontsize=15)
-ax.text(0.55,0.75,'{:.1f}%'.format(change2), fontsize=15, fontweight='bold', transform=ax.transAxes)
-ax.text(0.55,0.66,'total AGL\ncarbon change', transform=ax.transAxes, fontsize=15)
-ax.set_title('RCP4.5 Mean Change', fontsize=18)
+ax.text(0.51,0.9,'{:.1f}%'.format(change), fontsize=15, transform=ax.transAxes)
+ax.text(0.51,0.86,'loss of forest area', transform=ax.transAxes, fontsize=15)
+ax.text(0.51,0.75,'{:.1f}%'.format(change2), fontsize=15, fontweight='bold', transform=ax.transAxes)
+ax.text(0.51,0.66,'total AGL\ncarbon change', transform=ax.transAxes, fontsize=15)
+ax.set_title('RCP8.5 Mean Change', fontsize=18)
 cbar = plt.colorbar(plot, orientation='horizontal', shrink=0.65, pad=0.05, ticks=[-1,1])
 cbar.ax.set_xticklabels(['Forest loss','Forest gain'], fontsize=18) 
-ax.text(-124.2,33.5,'(b)',fontsize=18, fontweight='bold')
+ax.text(-124.2,33.5,'(c)',fontsize=18, fontweight='bold')
 ax.set_xticks([-124, -122, -120, -118, -116, -114], crs=ccrs.PlateCarree())
 ax.set_yticks([32,34,36,38,40,42], crs=ccrs.PlateCarree())
 ax.set_xticklabels([-124,-122,-120,-118,-116,''])
 ax.set_yticklabels([32,34,36,38,40,42])
 ax.tick_params(top=True, right=True)
 
-#plt.savefig(root + 'figures/fig3b_veg45change.eps')
+#plt.savefig(root + 'figures/fig3c_veg85change.eps')
