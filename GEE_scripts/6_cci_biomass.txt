@@ -1,0 +1,72 @@
+//Purpose: rescale CCI biomass data carbon data layer to 1/8 degree, filtering out non-wildland landcover
+//all imported assets should be publicly accessible
+//contact scoffiel@uci.edu with issues
+//raw CCI biomass data available at https://catalogue.ceda.ac.uk/uuid/bedc59f37c9545c981a839eb552e4084
+
+//polygons ---------------------------------------------------------------------------
+var states = ee.FeatureCollection('TIGER/2016/States');
+var cali = states.filter(ee.Filter.eq('NAME', 'California'));
+var countries = ee.FeatureCollection("FAO/GAUL/2015/level0");
+var mexi = countries.filter(ee.Filter.eq('ADM0_NAME', 'Mexico'));
+var usa = countries.filter(ee.Filter.eq('ADM0_NAME', 'United States of America'));
+
+
+//land cover NLCD mask --------------------------------------------------------------------------
+var nlcd = ee.Image('USGS/NLCD/NLCD2016');
+var nlcd = nlcd.select('landcover');
+//remap as 0 for invalid (urban, ag), 1 for valid (barren, natural)
+var nlcd_mask = nlcd.remap(
+    [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95],
+    [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0]);
+//this first mask is at 30m, pixels are masked out if not wildland
+
+/*
+//CCI biomass data 2017---------------------------------------
+var cci1 = ee.Image('users/scoffiel/cci_N40W100');
+var cci2 = ee.Image('users/scoffiel/cci_N40W140');
+var cci3 = ee.Image('users/scoffiel/cci_N80W140');
+var cci = ee.ImageCollection([cci1, cci2, cci3]);
+cci = cci.mosaic();
+
+Export.image.toAsset({
+  image: cci,
+  description:'cci_usa_mex',
+  scale:100, 
+  maxPixels:10e11,
+});
+*/
+var cci = ee.Image('users/scoffiel/cci_usa_mex');
+Map.addLayer(cci, {min:-1, max:200, palette:['yellow','green','black']}, 'CCI 2017 all');
+
+var cci_usa = cci.clip(usa);
+var cci_mex = cci.clip(mexi);
+cci_usa = cci_usa.mask(nlcd_mask);
+
+cci = ee.ImageCollection([cci_usa, cci_mex]);
+cci = cci.mosaic();
+Map.addLayer(cci, {min:-1, max:200, palette:['yellow','green','black']}, 'CCI 2017 masked');
+
+//cci = cci.unmask(-9999);
+
+
+//move to 1/8 degree resolution matching climate data --------------------------------------------------------
+//bcsd climate
+var bcsd = ee.Image('users/scoffiel/sample_bcsd');
+var bcsdProjection = bcsd.projection();
+
+var cciReproj = cci.reproject({crs: bcsdProjection});
+//we don't need to fully mask out invalid cover at 1/8 degree like the other data
+//those areas will be excluded by the landcover mask (GEE script 5)
+
+cciReproj = cciReproj.unmask(-9999);
+
+Map.addLayer(cciReproj, {min:0, max:200, palette:['#d2d2d2','green','black']}, 'CCI 1/8');
+
+Export.image.toDrive({
+  image: cciReproj,
+  description: 'cci_eighth',
+  maxPixels: 1e10,
+  folder: 'california',
+  crs:'EPSG:4326'
+});
+

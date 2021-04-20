@@ -1,0 +1,250 @@
+//for Approach #2, dominant veg type classifier ----------------------------------------
+
+// California polygon
+var states = ee.FeatureCollection('TIGER/2016/States');
+var cali = states.filter(ee.Filter.eq('NAME', 'California'));
+
+//bcsd climate
+var bcsd = ee.Image('users/scoffiel/sample_bcsd');
+var bcsdProjection = bcsd.projection();
+
+//land cover
+var nlcd = ee.Image('USGS/NLCD/NLCD2016');
+var nlcd = nlcd.select('landcover').clip(cali);
+print(nlcd);
+var nlcdVis = {
+  min: 0.0,
+  max: 95.0,
+  palette: [
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '466b9f',
+    'd1def8',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    'dec5c5',
+    'd99282',
+    'eb0000',
+    'ab0000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    'b3ac9f',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '68ab5f',
+    '1c5f2c',
+    'b5c58f',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    'af963c',
+    'ccb879',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    'dfdfc2',
+    'd1d182',
+    'a3cc51',
+    '82ba9e',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    'dcd939',
+    'ab6c28',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    'b8d9eb',
+    '000000',
+    '000000',
+    '000000',
+    '000000',
+    '6c9fb8'
+  ],
+};
+Map.addLayer(nlcd, nlcdVis, 'Landcover raw');
+
+//simplify to NaN, shrub, forest only
+//areas currently barren we assume stay barren (either granite or desert), excluded
+
+var nlcd_simplified = nlcd.remap(
+    [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95],
+    [-1,-1,-1,-1,-1,-1,-1,2,2,2,1,1,1,1,-1,-1,-1,-1,-1,-1]);
+Map.addLayer(nlcd_simplified, {}, 'NLCD simplified');
+
+//reproject to 1/8 degree to match BCSD climate
+var nlcdReproj = nlcd_simplified
+    .reduceResolution({
+      reducer: ee.Reducer.mode(),
+      maxPixels: 10000,
+      bestEffort:true,
+    }).reproject({
+      crs: bcsdProjection});
+Map.addLayer(nlcdReproj, {}, 'NLCD 1/8');
+nlcdReproj = nlcdReproj.unmask(-9999).clip(cali);
+
+Export.image.toDrive({
+  image: nlcdReproj,
+  description: 'landcover_eighth',
+  region: cali,
+  maxPixels: 1e10,
+  crs:'EPSG:4326'
+});
+
+
+/*
+//optional extra two masks for fire & harvest disturbance history for supplementary analysis --------------------------
+
+//Mask 1: sum frap at 30m (times burned 1995-2014)
+//obtained from frap.fire.ca.gov and rasterized to 30m annually using gdal
+var frap = ee.ImageCollection([
+  ee.Image("users/scoffiel/frap/30m_1995"),
+  ee.Image("users/scoffiel/frap/30m_1996"),
+  ee.Image("users/scoffiel/frap/30m_1997"),
+  ee.Image("users/scoffiel/frap/30m_1998"),
+  ee.Image("users/scoffiel/frap/30m_1999"),
+  ee.Image("users/scoffiel/frap/30m_2000"),
+  ee.Image("users/scoffiel/frap/30m_2001"),
+  ee.Image("users/scoffiel/frap/30m_2002"),
+  ee.Image("users/scoffiel/frap/30m_2003"),
+  ee.Image("users/scoffiel/frap/30m_2004"),
+  ee.Image("users/scoffiel/frap/30m_2005"),
+  ee.Image("users/scoffiel/frap/30m_2006"),
+  ee.Image("users/scoffiel/frap/30m_2007"),
+  ee.Image("users/scoffiel/frap/30m_2008"),
+  ee.Image("users/scoffiel/frap/30m_2009"),
+  ee.Image("users/scoffiel/frap/30m_2010"),
+  ee.Image("users/scoffiel/frap/30m_2011"),
+  ee.Image("users/scoffiel/frap/30m_2012"),
+  ee.Image("users/scoffiel/frap/30m_2013"),
+  ee.Image("users/scoffiel/frap/30m_2014")
+  ]).toBands().clip(cali);
+frap = frap.reduce('max');
+frap = frap.remap([0,1],[1,0]); //1 for anywhere without fire (valid)
+Map.addLayer(frap, {min:0, max:1, palette:['white','red']}, 'Fire');
+
+//Mask 2: high intensity harvest 1995-2014 
+//obtained from https://hub-calfire-forestry.hub.arcgis.com/datasets/cal-fire-timber-harvesting-plans-ta83/
+//filtered in QGIS to only completed, high-intensity harvest
+var harv = ee.Image('users/scoffiel/harvest_high');
+harv = harv.eq(0);
+Map.addLayer(harv, {min:0, max:1, palette:['white','brown']}, 'harvest');
+
+//combine masks
+frap = frap.toShort().select(0).rename('b1');
+harv = harv.toShort().select(0).rename('b1');
+var combined_mask = ee.ImageCollection([frap, harv]).mosaic();
+combined_mask = combined_mask.and(frap);
+Map.addLayer(combined_mask, {min:0, max:1, palette:['white','gray']}, 'combined mask');
+
+//apply masks
+var nlcd_simplified_masked = nlcd_simplified.mask(combined_mask);
+Map.addLayer(nlcd_simplified_masked, {min:0, max:2, palette:['yellow','green']}, 'NLCD simplified masked');
+
+var nlcdReproj_masked = nlcd_simplified_masked
+    .reduceResolution({
+      reducer: ee.Reducer.mode(),
+      maxPixels: 10000,
+      bestEffort:true,
+    }).reproject({
+      crs: bcsdProjection});
+nlcdReproj_masked = nlcdReproj_masked.unmask(-9999).clip(cali);
+Map.addLayer(nlcdReproj_masked, {min:0, max:2, palette:['yellow','green']}, 'NLCD 1/8 masked distr');
+
+Export.image.toDrive({
+  image: nlcdReproj_masked,
+  description: 'landcover_eighth_dom_masked',
+  region: cali,
+  folder: 'california',
+  maxPixels: 1e10,
+  crs:'EPSG:4326'
+});
+
+
+*/
+
+//get forest carbon averages for each landcover type by ecoregion (used to translate back to carbon density in Python)
+var carb = ee.Image('users/scoffiel/carb2014');
+carb = carb.clip(cali);
+carb = carb.multiply(11.1111111); //convert from ton/pixel to ton/ha (one pixel is 900m2)
+carb = carb.mask(nlcd_simplified.eq(2)); //only where forest
+Map.addLayer(carb, {min:-1, max:200, palette:['yellow','green','black']}, 'Forest-only carbon');
+
+var ecoregions = ee.FeatureCollection("EPA/Ecoregions/2013/L3");
+ecoregions = ecoregions.filterBounds(cali);
+var ecoregions_with_carb = carb.reduceRegions({
+  collection: ecoregions,
+  reducer: ee.Reducer.mean(),
+  scale: 30
+});
+print(ecoregions_with_carb);
+
+var empty = ee.Image().byte(); //redraw as an Image of ecoregs colored by forest carbon density
+var ecoregion_image = empty.paint({
+  featureCollection: ecoregions_with_carb,
+  color: 'mean',
+});
+ecoregion_image = ecoregion_image.clip(cali);
+Map.addLayer(ecoregion_image, {min:0, max:200, palette:['yellow','green','black']}, 'ecoregions colored');
+
+Export.image.toDrive({
+  image: ecoregion_image,
+  description: 'ecoregion_carbon_densities',
+  region: cali,
+  folder: 'california',
+  maxPixels: 1e10,
+  crs:'EPSG:4326',
+  scale:120 //reduce resolution by a factor of 4 so it fits in one file
+});

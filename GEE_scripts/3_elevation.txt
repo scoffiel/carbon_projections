@@ -1,0 +1,42 @@
+//Purpose: generate an 1/8 degree elevation data layer from USGS data
+//used in Python script 5 to plot carbon change vs. elevation
+
+var dataset = ee.Image('USGS/SRTMGL1_003');
+var states = ee.FeatureCollection('TIGER/2016/States');
+var cali = states.filter(ee.Filter.eq('NAME', 'California'));
+
+var elevation = dataset.select('elevation');
+var slope = ee.Terrain.slope(elevation);
+var aspect = ee.Terrain.aspect(elevation);
+
+print(aspect.projection());
+
+Map.setCenter(-115, 36.2841, 5);
+Map.addLayer(slope, {min: 0, max: 60}, 'slope');
+Map.addLayer(elevation, {min: -100, max: 4000}, 'elev');
+Map.addLayer(aspect, {min:0, max:360}, 'aspect');
+
+//change resolution --------------------------------------------------------
+//bcsd climate
+var bcsd = ee.Image('users/scoffiel/sample_bcsd');
+var bcsdProjection = bcsd.projection();
+
+var elevReproj = elevation
+    .reduceResolution({
+      reducer: ee.Reducer.mean(),
+      maxPixels: 10000, 
+      bestEffort:true,
+    }).reproject({crs: bcsdProjection});
+elevReproj = elevReproj.clip(cali);
+
+Map.addLayer(elevReproj, {min:-100, max:4000}, 'elev reproj');
+
+
+Export.image.toDrive({
+  image: elevReproj,
+  description: 'elev_eighth',
+  region: cali, 
+  maxPixels: 1e10,
+  folder: 'california',
+  crs:'EPSG:4326'
+});

@@ -1,0 +1,92 @@
+//Purpose: rescale CARB carbon data layer to 1/8 degree, filtering out non-wildland landcover
+//all imported assets (except carbon) should be publicly accessible
+//contact scoffiel@uci.edu with issues
+// California polygon ---------------------------------------------------------------------------
+var states = ee.FeatureCollection('TIGER/2016/States');
+var cali = states.filter(ee.Filter.eq('NAME', 'California'));
+//optional extra two masks for fire & harvest disturbance history --------------------------
+//used for supplementary analysis
+/*
+//Mask 1: sum frap at 30m (times burned 1995-2014)
+//these assets are publicly readable at https://code.earthengine.google.com/?asset=users/scoffiel/frap
+//obtained from frap.fire.ca.gov and rasterized to 30m annually using gdal
+var frap = ee.ImageCollection([
+  ee.Image("users/scoffiel/frap/30m_1995"),
+  ee.Image("users/scoffiel/frap/30m_1996"),
+  ee.Image("users/scoffiel/frap/30m_1997"),
+  ee.Image("users/scoffiel/frap/30m_1998"),
+  ee.Image("users/scoffiel/frap/30m_1999"),
+  ee.Image("users/scoffiel/frap/30m_2000"),
+  ee.Image("users/scoffiel/frap/30m_2001"),
+  ee.Image("users/scoffiel/frap/30m_2002"),
+  ee.Image("users/scoffiel/frap/30m_2003"),
+  ee.Image("users/scoffiel/frap/30m_2004"),
+  ee.Image("users/scoffiel/frap/30m_2005"),
+  ee.Image("users/scoffiel/frap/30m_2006"),
+  ee.Image("users/scoffiel/frap/30m_2007"),
+  ee.Image("users/scoffiel/frap/30m_2008"),
+  ee.Image("users/scoffiel/frap/30m_2009"),
+  ee.Image("users/scoffiel/frap/30m_2010"),
+  ee.Image("users/scoffiel/frap/30m_2011"),
+  ee.Image("users/scoffiel/frap/30m_2012"),
+  ee.Image("users/scoffiel/frap/30m_2013"),
+  ee.Image("users/scoffiel/frap/30m_2014")
+  ]).toBands().clip(cali);
+var frap_all = frap.reduce('max');
+Map.addLayer(frap_all, {min:0, max:1, palette:['white','orange']}, 'All fire');
+var frap_mask = frap_all.remap([0,1],[1,0]); //1 for anywhere without fire (valid)
+//Mask 2: high intensity harvest 1995-2014 
+//obtained from https://hub-calfire-forestry.hub.arcgis.com/datasets/cal-fire-timber-harvesting-plans-ta83/
+//filtered in QGIS to only completed, high-intensity harvest
+var harv = ee.Image('users/scoffiel/harvest_high');
+harv = harv.eq(0);
+Map.addLayer(harv, {min:0, max:1, palette:['white','black']}, 'harvest');
+*/
+//land cover NLCD mask --------------------------------------------------------------------------
+var nlcd = ee.Image('USGS/NLCD/NLCD2016');
+var nlcd = nlcd.select('landcover');
+nlcd = nlcd.clip(cali);
+//remap as 0 for invalid (urban, ag), 1 for valid (barren, natural)
+var nlcd_mask = nlcd.remap(
+    [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95],
+    [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0]);
+//Map.addLayer(nlcd_mask, {}, 'Land cover mask')
+//this first mask is at 30m, pixels are masked out if not wildland
+//CARB LANDFIRE AGL carbon 2014 data (metric tons C/pixel)---------------------------------------
+var carb = ee.Image('users/scoffiel/carb2014'); //this layer is available upon request from CARB
+carb = carb.clip(cali);
+carb = carb.mask(nlcd_mask);//.and(frap_mask).and(harv)); //extra 2 masks for supplemental analysis
+carb = carb.multiply(11.1111111); //convert from ton/pixel to ton/ha (one pixel is 900m2)
+Map.addLayer(carb, {min:-1, max:200, palette:['yellow','green','black']}, 'Filtered CARB 2014');
+//move to 1/8 degree resolution matching climate data --------------------------------------------------------
+//bcsd climate
+var bcsd = ee.Image('users/scoffiel/sample_bcsd');
+var bcsdProjection = bcsd.projection();
+//second land cover mask at 1/8 degree
+var nlcdMaskReproj = nlcd_mask
+    .reduceResolution({
+      reducer: ee.Reducer.mode(),
+      maxPixels: 10000, //fails if too large
+      bestEffort:true,
+    }).reproject({crs: bcsdProjection}); 
+//Map.addLayer(nlcdMaskReproj, {}, 'Land cover mask 1/8');
+//get carbon data to 1/8 degree (bcsd scale and projection)
+//carbon is upscaled to 1/8 degree, averaging only valid sub-pixels
+//then we mask out 1/8 degree pixels that aren't at least 50% wildland 
+var carbReproj = carb
+    .reduceResolution({
+      reducer: ee.Reducer.mean(),
+      maxPixels: 10000, //fails if too large
+      bestEffort:true,
+    }).reproject({crs: bcsdProjection})
+    .mask(nlcdMaskReproj);
+carbReproj = carbReproj.unmask(-9999).clip(cali);
+Map.addLayer(carbReproj, {min:0, max:200, palette:['#d2d2d2','green','black']}, 'CARB 1/8');
+Export.image.toDrive({
+  image: carbReproj,
+  description: 'carbon_eighth',
+  region: cali, 
+  maxPixels: 1e10,
+  folder: 'california',
+  crs:'EPSG:4326'
+});

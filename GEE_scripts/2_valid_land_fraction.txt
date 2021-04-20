@@ -1,0 +1,42 @@
+//Purpose: create a "valid landcover fraction" at 1/8 degree layer to multiply carbon layer by
+//useful 1) when calculating total carbon changes across the state
+//       2) to limit how much carbon we could project to different areas in the future (esp for high-elevation rock cover)
+
+// California polygon ---------------------------------------------------------------------------
+var states = ee.FeatureCollection('TIGER/2016/States');
+var cali = states.filter(ee.Filter.eq('NAME', 'California'));
+
+//land cover NLCD data --------------------------------------------------------------------------
+var nlcd = ee.Image('USGS/NLCD/NLCD2016');
+var nlcd = nlcd.select('landcover');
+nlcd = nlcd.clip(cali);
+
+//remap as 0 water/ag/urban/barren, 1 for grass/shrub/forest
+var valid_mask = nlcd.remap(
+    [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]);
+//Map.addLayer(valid_mask, {}, 'Valid land cover mask')
+
+
+//rescale to 1/8 degree matching climate data ---------------------------------------------
+var bcsd = ee.Image('users/scoffiel/sample_bcsd');
+var bcsdProjection = bcsd.projection();
+
+var valid_mask_eighth = valid_mask
+    .reduceResolution({
+      reducer: ee.Reducer.mean(),
+      maxPixels: 10000, //fails if too large
+      bestEffort:true,
+    }).reproject({crs: bcsdProjection});
+Map.addLayer(valid_mask_eighth, {}, 'Valid fraction (1/8)');
+
+
+Export.image.toDrive({
+  image: valid_mask_eighth,
+  description: 'valid_fraction',
+  region: cali,
+  maxPixels: 1e10,
+  crs:'EPSG:4326'
+});
+
+

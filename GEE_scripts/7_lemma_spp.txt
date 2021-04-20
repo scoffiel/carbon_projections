@@ -1,0 +1,168 @@
+//For 4th approach, species niche models
+//Read in LEMMA data obtained from https://lemma.forestry.oregonstate.edu/data/plot-database
+//consists of a raster layer of IDs and a large lookup table for corresponding spp biomass densities
+//all assets in script are publicly readible
+
+// California polygon ---------------------------------------------------------------------------
+var states = ee.FeatureCollection('TIGER/2016/States');
+var cali = states.filter(ee.Filter.eq('NAME', 'California'));
+
+//land cover NLCD mask --------------------------------------------------------------------------
+var nlcd = ee.Image('USGS/NLCD/NLCD2016');
+var nlcd = nlcd.select('landcover');
+nlcd = nlcd.clip(cali);
+//remap as 0 for invalid (urban, ag), 1 for valid (barren, natural)
+var nlcd_mask = nlcd.remap(
+    [11,12,21,22,23,24,31,41,42,43,51,52,71,72,73,74,81,82,90,95],
+    [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0]);
+//this first mask is at 30m, fid pixels are masked out if not wildland
+ 
+
+//LEMMA data ---------------------------------------
+var grid = ee.Image('users/scoffiel/species30m'); //30m grid of IDs
+grid = grid.clip(cali);
+grid = grid.mask(nlcd_mask);
+//Map.addLayer(grid, {min:-100, max:150000, palette:['orange','red','black']}, 'FIDs');
+
+var lookupTable = ee.FeatureCollection("users/scoffiel/tree_bio"); 
+var fids = lookupTable.aggregate_array("VALUE");
+
+var names = ['DouglasFir',
+'GrandWhiteFir',
+'PonderosaPine',
+'CanyonLiveOak',
+'Redwood',
+'NobleFir',
+'Tanoak',
+'BlackOak',
+'JeffreyPine',
+'BlueOak',
+'PacificMadrone',
+'LodgepolePine',
+'IncenseCedar',
+'SugarPine',
+'CaliforniaLiveOak',
+'InteriorLiveOak',
+'CaliforniaLaurel',
+'OregonWhiteOak',
+'CaliforniaFoothillPine',
+'WesternWhitePine',
+'CaliforniaWhiteOak',
+'SingleleafPinyon',
+'WesternJuniper',
+'BigleafMaple',
+'RedAlder',
+'GiantSequoia',
+'MountainHemlock',
+'SitkaSpruce',
+'WesternHemlock',
+'KnobconePine',
+'GiantChinquapin',
+'CurlLeafMountainMahogany',
+'WhiteAlder',
+'BigconeDouglasFir',
+'CaliforniaBuckeye',
+'BishopPine',
+'FremontCottonwood',
+'PortOrfordCedar',
+'CaliforniaJuniper'];
+
+var species = [lookupTable.aggregate_array("PSME_BIO_CRM"),
+lookupTable.aggregate_array("ABGRC_BIO_CRM"),
+lookupTable.aggregate_array("PIPO_BIO_CRM"),
+lookupTable.aggregate_array("QUCH2_BIO_CRM"),
+lookupTable.aggregate_array("SESE3_BIO_CRM"),
+lookupTable.aggregate_array("ABPRSH_BIO_CRM"),
+lookupTable.aggregate_array("LIDE3_BIO_CRM"),
+lookupTable.aggregate_array("QUKE_BIO_CRM"),
+lookupTable.aggregate_array("PIJE_BIO_CRM"),
+lookupTable.aggregate_array("QUDO_BIO_CRM"),
+lookupTable.aggregate_array("ARME_BIO_CRM"),
+lookupTable.aggregate_array("PICO_BIO_CRM"),
+lookupTable.aggregate_array("CADE27_BIO_CRM"),
+lookupTable.aggregate_array("PILA_BIO_CRM"),
+lookupTable.aggregate_array("QUAG_BIO_CRM"),
+lookupTable.aggregate_array("QUWI2_BIO_CRM"),
+lookupTable.aggregate_array("UMCA_BIO_CRM"),
+lookupTable.aggregate_array("QUGA4_BIO_CRM"),
+lookupTable.aggregate_array("PISA2_BIO_CRM"),
+lookupTable.aggregate_array("PIMO3_BIO_CRM"),
+lookupTable.aggregate_array("QULO_BIO_CRM"),
+lookupTable.aggregate_array("PIMO_BIO_CRM"),
+lookupTable.aggregate_array("JUOC_BIO_CRM"),
+lookupTable.aggregate_array("ACMA3_BIO_CRM"),
+lookupTable.aggregate_array("ALRU2_BIO_CRM"),
+lookupTable.aggregate_array("SEGI2_BIO_CRM"),
+lookupTable.aggregate_array("TSME_BIO_CRM"),
+lookupTable.aggregate_array("PISI_BIO_CRM"),
+lookupTable.aggregate_array("TSHE_BIO_CRM"),
+lookupTable.aggregate_array("PIAT_BIO_CRM"),
+lookupTable.aggregate_array("CHCH7_BIO_CRM"),
+lookupTable.aggregate_array("CELE3_BIO_CRM"),
+lookupTable.aggregate_array("ALRH2_BIO_CRM"),
+lookupTable.aggregate_array("PSMA_BIO_CRM"),
+lookupTable.aggregate_array("AECA_BIO_CRM"),
+lookupTable.aggregate_array("PIMU_BIO_CRM"),
+lookupTable.aggregate_array("POFR2_BIO_CRM"),
+lookupTable.aggregate_array("CHLA_BIO_CRM"),
+lookupTable.aggregate_array("JUCA7_BIO_CRM")
+];
+
+for(var i=0; i<species.length; i++){
+  species[i] = grid.remap(fids, species[i], 0);
+}
+species = ee.ImageCollection(species).toBands(); //stack as bands in an image
+species = species.select(species.bandNames(), names); //rename bands
+print(species);
+/*
+Export.image.toAsset({
+  image: species,
+  description:'species39',
+  scale:30, 
+  region:cali, 
+  maxPixels:1e9
+});
+*/
+var species = ee.Image("users/scoffiel/species39");
+
+for(var i=0; i<names.length; i++){
+  Map.addLayer(species.select(names[i]), {min:0, max:300000, palette:['yellow','green','black']}, names[i], 0,1);
+}
+
+
+//change to 1/8 deg resolution --------------------------------------------------------
+
+//bcsd climate
+var bcsd = ee.Image('users/scoffiel/sample_bcsd');
+var bcsdProjection = bcsd.projection();
+
+//second land cover mask
+var nlcdMaskReproj = nlcd_mask
+    .reduceResolution({
+      reducer: ee.Reducer.mode(),
+      maxPixels: 10000, //fails if too large
+      bestEffort:true,
+    }).reproject({crs: bcsdProjection}); 
+
+//get species data at 1/8 deg
+var speciesReproj = species
+    .reduceResolution({
+      reducer: ee.Reducer.mean(),
+      maxPixels: 10000, //fails if too large
+      bestEffort:true,
+    }).reproject({crs: bcsdProjection})
+    .mask(nlcdMaskReproj);
+speciesReproj = speciesReproj.unmask(-9999).clip(cali);
+
+for(var i=0; i<names.length; i++){
+  //Map.addLayer(speciesReproj.select(names[i]), {min:-9999, max:100000, palette:['#d2d2d2','green','black']}, names[i]);
+}
+
+Export.image.toDrive({
+  image: speciesReproj,
+  description: 'lemma_39spp_eighth',
+  region: cali, 
+  maxPixels: 1e10,
+  folder: 'california',
+  crs:'EPSG:4326'
+});
